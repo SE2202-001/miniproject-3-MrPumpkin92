@@ -4,14 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterLevel = document.getElementById('filterLevel');
     const filterType = document.getElementById('filterType');
     const filterSkill = document.getElementById('filterSkill');
+    const filterButton = document.getElementById('filterButton');
     const sortOptions = document.getElementById('sortOptions');
     const sortButton = document.getElementById('sortButton');
     const jobResults = document.getElementById('jobResults');
 
-    let jobs = []; // Stores all jobs
-    let filteredJobs = []; // Stores filtered jobs for display
+    let jobs = [];
 
-    // Handle JSON file upload
+    // Upload JSON file
     uploadButton.addEventListener('click', () => {
         const file = fileInput.files[0];
         if (!file) {
@@ -22,103 +22,75 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const data = JSON.parse(event.target.result);
-
-                // Ensure data is an array of jobs
-                if (Array.isArray(data)) {
-                    jobs = data;
-                    filteredJobs = jobs; // Initialize filtered jobs
-                    populateFilters(jobs); // Populate filters dynamically
-                    displayJobs(jobs); // Display jobs initially
-                } else {
-                    alert('Error: Uploaded file does not contain a valid array of jobs.');
-                }
+                jobs = JSON.parse(event.target.result); // Parse JSON file
+                displayJobs(jobs); // Display jobs
+                populateFilters(jobs); // Populate filters dynamically
             } catch (err) {
-                alert('Error reading file: Ensure it is a valid JSON.');
+                alert('Invalid JSON file format. Please ensure the file is valid.');
+                console.error(err);
             }
         };
         reader.readAsText(file);
     });
 
-    // Populate filters dynamically based on job data
-    const populateFilters = (jobList) => {
-        const levels = new Set(jobList.map(job => job.Level || 'Unknown Level'));
-        const types = new Set(jobList.map(job => job.Type || 'Unknown Type'));
-        const skills = new Set(jobList.map(job => job.Skill || 'Unknown Skill'));
+    // Populate filters dynamically
+    const populateFilters = (jobs) => {
+        const levels = new Set(jobs.map(job => job.Level));
+        const types = new Set(jobs.map(job => job.Type));
+        const skills = new Set(jobs.map(job => job.Skill));
 
         filterLevel.innerHTML = '<option value="All">All</option>' + [...levels].map(level => `<option value="${level}">${level}</option>`).join('');
         filterType.innerHTML = '<option value="All">All</option>' + [...types].map(type => `<option value="${type}">${type}</option>`).join('');
         filterSkill.innerHTML = '<option value="All">All</option>' + [...skills].map(skill => `<option value="${skill}">${skill}</option>`).join('');
     };
 
-    // Display jobs in the "Job Listings" section
+    // Display jobs
     const displayJobs = (jobsToDisplay) => {
         if (jobsToDisplay.length === 0) {
             jobResults.innerHTML = '<p>No jobs available.</p>';
             return;
         }
-        jobResults.innerHTML = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Type</th>
-                        <th>Level</th>
-                        <th>Skill</th>
-                        <th>Posted</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${jobsToDisplay.map(job => `
-                        <tr>
-                            <td><a href="${job['Job Page Link']}" target="_blank">${job.Title}</a></td>
-                            <td>${job.Type}</td>
-                            <td>${job.Level}</td>
-                            <td>${job.Skill}</td>
-                            <td>${job.Posted}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+
+        jobResults.innerHTML = jobsToDisplay.map(job => `
+            <div class="job-item">
+                <h3><a href="${job['Job Page Link']}" target="_blank">${job.Title}</a></h3>
+                <p>Type: ${job.Type}</p>
+                <p>Level: ${job.Level}</p>
+                <p>Skill: ${job.Skill}</p>
+                <p>Posted: ${job.Posted}</p>
+                <p>Details: ${job.Detail}</p>
+            </div>
+        `).join('');
     };
 
-    // Apply filters to the job list
-    const applyFilters = () => {
+    // Filter jobs
+    const filterJobs = () => {
+        let filteredJobs = jobs;
         const selectedLevel = filterLevel.value;
         const selectedType = filterType.value;
         const selectedSkill = filterSkill.value;
 
-        filteredJobs = jobs.filter(job => {
-            const matchesLevel = selectedLevel === 'All' || job.Level === selectedLevel;
-            const matchesType = selectedType === 'All' || job.Type === selectedType;
-            const matchesSkill = selectedSkill === 'All' || job.Skill.includes(selectedSkill);
-            return matchesLevel && matchesType && matchesSkill;
-        });
+        if (selectedLevel !== 'All') filteredJobs = filteredJobs.filter(job => job.Level === selectedLevel);
+        if (selectedType !== 'All') filteredJobs = filteredJobs.filter(job => job.Type === selectedType);
+        if (selectedSkill !== 'All') filteredJobs = filteredJobs.filter(job => job.Skill === selectedSkill);
 
         displayJobs(filteredJobs);
     };
 
-    // Apply sorting to the job list
+    // Sort jobs
     const sortJobs = () => {
-        const option = sortOptions.value;
+        const selectedOption = sortOptions.value;
+        const sortedJobs = [...jobs];
 
-        if (option === 'title-asc') {
-            filteredJobs.sort((a, b) => a.Title.localeCompare(b.Title));
-        } else if (option === 'title-desc') {
-            filteredJobs.sort((a, b) => b.Title.localeCompare(a.Title));
-        } else if (option === 'time-asc') {
-            filteredJobs.sort((a, b) => new Date(a.Posted) - new Date(b.Posted));
-        } else if (option === 'time-desc') {
-            filteredJobs.sort((a, b) => new Date(b.Posted) - new Date(a.Posted));
-        }
+        if (selectedOption === 'title-asc') sortedJobs.sort((a, b) => a.Title.localeCompare(b.Title));
+        if (selectedOption === 'title-desc') sortedJobs.sort((a, b) => b.Title.localeCompare(a.Title));
+        if (selectedOption === 'time-asc') sortedJobs.sort((a, b) => new Date(a.Posted) - new Date(b.Posted));
+        if (selectedOption === 'time-desc') sortedJobs.sort((a, b) => new Date(b.Posted) - new Date(a.Posted));
 
-        displayJobs(filteredJobs);
+        displayJobs(sortedJobs);
     };
 
-    // Attach filter and sort event listeners
-    filterLevel.addEventListener('change', applyFilters);
-    filterType.addEventListener('change', applyFilters);
-    filterSkill.addEventListener('change', applyFilters);
+    // Event listeners for filters and sorting
+    filterButton.addEventListener('click', filterJobs);
     sortButton.addEventListener('click', sortJobs);
 });
